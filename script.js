@@ -1,122 +1,83 @@
-let videoElem = document.querySelector("video");
-// 1. 
-let recordBtn = document.querySelector(".record");
-let captureImgBtn = document.querySelector(".click-image")
-let filterArr = document.querySelectorAll(".filter");
-let filterOverlay = document.querySelector(".filter_overlay");
-let isRecording = false;
-let filterColor = "";
-let timing = document.querySelector(".timer");
-let counter = 0;
-let clearObj;
-// user  requirement send 
-let constraint = {
-    audio: true, video: true
-}
-// represent future recording
-let recording = [];
-let mediarecordingObjectForCurrStream;
-// promise 
-let usermediaPromise = navigator
-    .mediaDevices.getUserMedia(constraint);
-// /stream coming from required
-usermediaPromise.
-    then(function (stream) {
-        // UI stream 
-        videoElem.srcObject = stream;
-        // browser
-        mediarecordingObjectForCurrStream = new MediaRecorder(stream);
-        // camera recording add -> recording array
-        mediarecordingObjectForCurrStream.ondataavailable = function (e) {
-            recording.push(e.data);
-        }
-        // download
-        mediarecordingObjectForCurrStream.addEventListener("stop", function () {
-            // recording -> url convert 
-            // type -> MIME type (extension)
-            const blob = new Blob(recording, { type: 'video/mp4' });
-            const url = window.URL.createObjectURL(blob);
-            let a = document.createElement("a");
-            a.download = "file.mp4";
-            a.href = url;
-            a.click();
-            recording = [];
-        })
+let mainArea = document.querySelector(".main_area");
 
-    }).catch(function (err) {
-        console.log(err)
-        alert("please allow both microphone and camera");
-    });
-recordBtn.addEventListener("click", function () {
-    if (mediarecordingObjectForCurrStream == undefined) {
-        alert("First select the devices");
-        return;
-    }
-    if (isRecording == false) {
-        mediarecordingObjectForCurrStream.start();
-        recordBtn.innerText = "Recording....";
-        startTimer();
-    }
-    else {
-        stopTimer();
-        mediarecordingObjectForCurrStream.stop();
-        recordBtn.innerText = "Record";
-    }
-    isRecording = !isRecording
-})
-captureImgBtn.addEventListener("click", function () {
-    // canvas create 
-    let canvas = document.createElement("canvas");
-    canvas.height = videoElem.videoHeight;
-    canvas.width = videoElem.videoWidth;
-    let tool = canvas.getContext("2d");
-    tool.drawImage(videoElem, 0, 0);
-    if(filterColor){
-        tool.fillStyle=filterColor;
-        tool.fillRect(0, 0,canvas.width,canvas.height);
-    }
+let galleryCard = document.querySelector("#gallery");
+let cameraCard = document.querySelector("#camera");
+let screenRecCard = document.querySelector("#screenRec");
+let cards = document.querySelectorAll(".card");
 
-    let url = canvas.toDataURL();
-    let a = document.createElement("a");
-    a.download = "file.png";
-    a.href = url;
-    a.click();
-    a.remove();
-    // videoELement
-})
+let popMsg = document.querySelector("#popUpMsg");
+let popwindow = document.querySelector("#popup_window");
+let textBox = document.querySelector("#textBox");
+let enterBtn = document.querySelector(".enter");
 
-
-
-// filter Array
-for (let i = 0; i < filterArr.length; i++) {
-    filterArr[i].addEventListener("click", function () {
-        filterColor = filterArr[i].style.backgroundColor;
-        filterOverlay.style.backgroundColor = filterColor;
+for (let i = 0; i < cards.length; i++) {
+    cards[i].addEventListener("click", function () {
+        cards[i].classList.add("activeCard");
+        setTimeout(function () {
+            cards[i].classList.remove("activeCard");
+        }, 150);
     })
 }
 
-function startTimer() {
-    timing.style.display = "block";
-    function fn () {
-        //hours
-        let hours = Number.parseInt(counter / 3600);
-        hours = hours < 10 ? `0${hours}`: `${hours}`;
-        //mins
-        let remSeconds = counter % 3600;
-        let mins = Number.parseInt((remSeconds % 3600 ) / 60);
-        mins = mins < 10 ? `0${mins}`: `${mins}`;
-        // seconds
-        let seconds = Number.parseInt(remSeconds % 60);
-        seconds = seconds < 10 ? `0${seconds}`: `${seconds}`;
+galleryCard.addEventListener("click", function () {
+    window.location.assign("./Gallery/g_index.html")
+})
+cameraCard.addEventListener("click", function () {
+    window.location.assign("./Camera/c_index.html")
+})
 
-        timing.innerText = `${hours}:${mins}:${seconds}`;
+let letraints = {
+    video: { mediaSource: "screen" }
+}
+let buffer = [];
+let recordState = false;
+let mediaRecorder;
+screenRecCard.addEventListener("click", async function (e) {
+    await navigator.mediaDevices.getDisplayMedia(letraints)
+        .then(function (mediaStream) {
+            mediaRecorder = new MediaRecorder(mediaStream);
+            mediaRecorder.addEventListener("dataavailable", function (e) {
+                buffer.push(e.data);
+            })
+            mediaRecorder.addEventListener("stop", function () {
+                popwindow.classList.add("show");
+                mainArea.style.opacity = 0.5;
+                popUpWindow();
+                popUpMsg();
+            })
+        }).catch(function (err) {
+            console.log(err)
+        });
 
-        counter++;
+    if (recordState == false) {
+        mediaRecorder.start();
+        recordState = true;
+    } else {
+        mediaRecorder.stop();
+        recordState = false;
     }
-    clearObj = setInterval(fn, 1000);
+
+})
+
+function findDate() {
+    let date = new Date();
+    let str = date.getDate() + "/" + date.getMonth() + "/" + date.getFullYear();
+    return str;
 }
 
-function stopTimer() {
-    timing.style.display = "none";
-    clearInterval(clearObj);
+function popUpMsg() {
+    popMsg.className = "show";
+    setTimeout(function () { popMsg.className = popMsg.className.replace("show", ""); }, 2000);
+}
+
+function popUpWindow() {
+    enterBtn.addEventListener("click", function () {
+        let mediaName = textBox.innerText;
+        let date = findDate();
+        let blob = new Blob(buffer, { type: 'screenRec/mp4' });
+        addMedia(blob, "scrvideo", mediaName, date);
+        buffer = [];
+        mainArea.style.opacity = 1;
+        popwindow.classList.remove("show");
+    })
 }
